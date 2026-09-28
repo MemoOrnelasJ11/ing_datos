@@ -1,2 +1,5 @@
 import pandas as pd
-print(5)
+
+
+if __name__ == '__main__':
+    return
