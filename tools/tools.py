@@ -1,4 +1,5 @@
 #aquí debe ir toda la lógica de las funciones y rutas para usar en el main
+#importar todas las librerias
 
 #ruta de descargas de bases de kaggle
 RUTA_CARPETA_BASES_KAGGLE= ''
