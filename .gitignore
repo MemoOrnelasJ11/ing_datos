@@ -1,3 +1,6 @@
 .DS_Store
 __pychache__/
-
+.env
+config/credentials.json
+token.json
+config/service_credentials.json
