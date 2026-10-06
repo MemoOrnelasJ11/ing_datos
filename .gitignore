@@ -4,3 +4,6 @@ __pychache__/
 config/credentials.json
 token.json
 config/service_credentials.json
+config/kaggle.json
+bases/
+datasets/

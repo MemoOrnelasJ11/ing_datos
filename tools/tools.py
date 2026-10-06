@@ -197,7 +197,7 @@ class sql:
     def crear_db(df, ruta_db, nombre_tabla:str):
         
         ruta_db = Path(ruta_db).expanduser()
-        conexion = sqlite3.connect(df)
+        conexion = sqlite3.connect(ruta_db)
 
         df.to_sql(
             nombre_tabla,
@@ -210,11 +210,12 @@ class sql:
 
     @staticmethod
     def query(db_id:str, query:str ):
-        df = drive.leer_archivo(db_id)
-        cursor = df.cursor()
-        cursor.execute(query)
-        resultado = cursor.fetchall()
-        return resultado
+
+        conexion = drive.leer_archivo(db_id)
+        df = pd.read_sql_query(query, conexion)
+
+        conexion.close()
+        return df
 
 
 class kaggle:
@@ -291,7 +292,6 @@ class kaggle:
             return None
         return kaggle._leer_csv(csvs[0])
  
-class kaggle2:
     @staticmethod
     def consultar_kaggle(busqueda:str):
         load_dotenv()
