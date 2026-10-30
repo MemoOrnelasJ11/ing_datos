@@ -1,0 +1,2 @@
+{"timestamp": "2026-10-22T20:19:11", "tabla_origen": "data", "tabla_destino": "extracted_data", "filas_leidas": 151445, "filas_nuevas": 0, "tipo": "incremental", "estado": "exitoso", "error": null}
+{"timestamp": "2026-10-22T20:19:56", "tabla_origen": "data", "tabla_destino": "extracted_data", "filas_leidas": 151445, "filas_nuevas": 0, "tipo": "incremental", "estado": "exitoso", "error": null}

@@ -1,0 +1,9 @@
+{
+  "tabla_origen": "data",
+  "tabla_destino": "extracted_data",
+  "ultima_extraccion": "2026-10-22T20:19:56",
+  "filas_leidas": 151445,
+  "filas_nuevas": 0,
+  "filas_acumuladas": 71913,
+  "tipo": "incremental"
+}
