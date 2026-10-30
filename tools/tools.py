@@ -27,6 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 RUTA_CARPETA_BASES_KAGGLE = BASE_DIR / "datasets"
 
 KAGGLE_JSON_PATH = os.path.expanduser('~/Documents/IA/4_semestre/ing_de_datos/ing_datos/config/kaggle.json')
+os.environ["KAGGLE_CONFIG_DIR"] = os.path.dirname(KAGGLE_JSON_PATH)
 
 #ruta de base de datos sqlite3
 RUTA_CARPETA_BASE_SQL= BASE_DIR / "bases"
