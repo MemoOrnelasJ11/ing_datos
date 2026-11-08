@@ -1,11 +1,11 @@
 {
   "etiqueta": "adilshamim8",
-  "actualizado_en": "2026-11-07T19:07:10",
+  "actualizado_en": "2026-11-07T22:43:10",
   "base_datos": "tabla_1.db",
   "tabla_origen": "data",
   "tabla_destino": "extracted_adilshamim8",
   "ultimo_batch": 1,
-  "ultima_extraccion": "2026-11-07T19:07:10",
+  "ultima_extraccion": "2026-11-07T22:43:10",
   "filas_leidas": 151445,
   "filas_nuevas": 0,
   "filas_acumuladas": 151445,

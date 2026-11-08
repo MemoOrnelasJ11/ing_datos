@@ -1,0 +1,213 @@
+{
+  "etiqueta": "adilshamim8",
+  "recorrido": [
+    "Kaggle (adilshamim8) CSV",
+    "RAW: data (tabla_1.db)",
+    "EXTRACTED: extracted_adilshamim8 (tabla_1.db)",
+    "TRANSFORMED: Transformacion_de_Datos/Processed/transformed_adilshamim8.parquet"
+  ],
+  "origen": "extracted_adilshamim8",
+  "destino": "Transformacion_de_Datos/Processed/transformed_adilshamim8.parquet",
+  "filas_origen": 151445,
+  "filas_destino": 71913,
+  "version_reglas": "v1.0",
+  "columnas_obligatorias": [
+    "work_year",
+    "experience_level",
+    "employment_type",
+    "salary",
+    "salary_currency",
+    "salary_in_usd"
+  ],
+  "reglas_consistencia": [
+    "usd_salary_distinto_de_salary_in_usd",
+    "experience_level_invalido",
+    "employment_type_invalido",
+    "company_size_invalido",
+    "remote_ratio_fuera_de_0_50_100",
+    "work_year_fuera_de_2020_2025",
+    "salario_no_positivo",
+    "pais_no_iso2"
+  ],
+  "bitacora": [
+    {
+      "paso": 1,
+      "transformacion": "renombrar_columnas",
+      "columnas": "",
+      "filas_antes": 151445,
+      "filas_despues": 151445,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 0,
+      "decision": "renombrar",
+      "justificacion": "Se reemplazan espacios por \"_\" en los nombres; 0 columnas tenían espacios."
+    },
+    {
+      "paso": 2,
+      "transformacion": "limpieza_texto",
+      "columnas": "experience_level, employment_type, job_title, salary_currency, employee_residence, company_location, company_size",
+      "filas_antes": 151445,
+      "filas_despues": 151445,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 0,
+      "decision": "normalizar",
+      "justificacion": "strip de espacios al inicio y al final, se colapsan espacios dobles y los códigos se pasan a MAYÚSCULAS para que las categorías coincidan."
+    },
+    {
+      "paso": 3,
+      "transformacion": "nulos_obligatorias",
+      "columnas": "work_year, experience_level, employment_type, salary, salary_currency, salary_in_usd",
+      "filas_antes": 151445,
+      "filas_despues": 151445,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 0,
+      "decision": "eliminar",
+      "justificacion": "Sin año, nivel, tipo de empleo o salario la fila no sirve para el análisis salarial y no se puede imputar sin sesgar."
+    },
+    {
+      "paso": 4,
+      "transformacion": "nulos_job_title",
+      "columnas": "job_title",
+      "filas_antes": 151445,
+      "filas_despues": 151445,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 0,
+      "decision": "marcar",
+      "justificacion": "El puesto describe la fila pero no invalida el salario; se marca para no perder el registro."
+    },
+    {
+      "paso": 5,
+      "transformacion": "nulos_employee_residence",
+      "columnas": "employee_residence",
+      "filas_antes": 151445,
+      "filas_despues": 151445,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 0,
+      "decision": "marcar",
+      "justificacion": "País desconocido; se marca con ND para no inventar una ubicación."
+    },
+    {
+      "paso": 6,
+      "transformacion": "nulos_company_location",
+      "columnas": "company_location",
+      "filas_antes": 151445,
+      "filas_despues": 151445,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 0,
+      "decision": "marcar",
+      "justificacion": "País desconocido; se marca con ND para no inventar una ubicación."
+    },
+    {
+      "paso": 7,
+      "transformacion": "nulos_company_size",
+      "columnas": "company_size",
+      "filas_antes": 151445,
+      "filas_despues": 151445,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 0,
+      "decision": "marcar",
+      "justificacion": "Tamaño desconocido; se marca con ND."
+    },
+    {
+      "paso": 8,
+      "transformacion": "nulos_remote_ratio",
+      "columnas": "remote_ratio",
+      "filas_antes": 151445,
+      "filas_despues": 151445,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 0,
+      "decision": "imputar",
+      "justificacion": "Se imputa con la moda (0 = presencial), que es la mayoría de los registros."
+    },
+    {
+      "paso": 9,
+      "transformacion": "duplicados_exactos",
+      "columnas": "work_year, experience_level, employment_type, job_title, salary, salary_currency, salary_in_usd, employee_residence, remote_ratio, company_location, company_size",
+      "filas_antes": 151445,
+      "filas_despues": 71913,
+      "filas_eliminadas": 79532,
+      "filas_afectadas": 79532,
+      "decision": "eliminar",
+      "justificacion": "Filas idénticas en las 11 columnas de negocio inflan los conteos y sesgan los promedios; se conserva la primera aparición."
+    },
+    {
+      "paso": 10,
+      "transformacion": "reglas_consistencia",
+      "columnas": "usd_salary_distinto_de_salary_in_usd, experience_level_invalido, employment_type_invalido, company_size_invalido, remote_ratio_fuera_de_0_50_100, work_year_fuera_de_2020_2025, salario_no_positivo, pais_no_iso2",
+      "filas_antes": 71913,
+      "filas_despues": 71913,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 0,
+      "decision": "eliminar",
+      "justificacion": "Una fila que rompe una regla de negocio (moneda USD distinta de salary_in_usd, códigos fuera de catálogo, año o remote_ratio inválidos) no es confiable."
+    },
+    {
+      "paso": 11,
+      "transformacion": "conversion_tipos",
+      "columnas": "work_year, remote_ratio, salary, salary_in_usd, _extracted_at, experience_level, employment_type, job_title, salary_currency, employee_residence, company_location, company_size",
+      "filas_antes": 71913,
+      "filas_despues": 71913,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 71913,
+      "decision": "convertir",
+      "justificacion": "Enteros: work_year int16, remote_ratio int8, salarios int64. Texto: string. Fecha: _extracted_at a datetime."
+    },
+    {
+      "paso": 12,
+      "transformacion": "columnas_derivadas",
+      "columnas": "es_remoto_total, misma_ubicacion, pago_en_usd, tasa_cambio_a_usd",
+      "filas_antes": 71913,
+      "filas_despues": 71913,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 71913,
+      "decision": "derivar",
+      "justificacion": "Booleanos para filtrar (remoto total, empleado en el país de la empresa, pago en USD) y un decimal con la tasa implícita salary_in_usd / salary."
+    },
+    {
+      "paso": 13,
+      "transformacion": "marcar_atipicos_salario",
+      "columnas": "salary_in_usd",
+      "filas_antes": 71913,
+      "filas_despues": 71913,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 1754,
+      "decision": "marcar",
+      "justificacion": "Regla IQR sobre salary_in_usd (fuera de [-45,472, 331,788]). Se marcan y no se eliminan porque pueden ser salarios reales de puestos ejecutivos."
+    },
+    {
+      "paso": 14,
+      "transformacion": "metadatos_transformacion",
+      "columnas": "_transformed_at, _transform_version",
+      "filas_antes": 71913,
+      "filas_despues": 71913,
+      "filas_eliminadas": 0,
+      "filas_afectadas": 71913,
+      "decision": "agregar",
+      "justificacion": "Se agregan _transformed_at y _transform_version; se conservan _batch_id, _extracted_at, _source_table y _row_hash."
+    }
+  ],
+  "tipos_columnas": {
+    "work_year": "int16",
+    "experience_level": "string",
+    "employment_type": "string",
+    "job_title": "string",
+    "salary": "int64",
+    "salary_currency": "string",
+    "salary_in_usd": "int64",
+    "employee_residence": "string",
+    "remote_ratio": "int8",
+    "company_location": "string",
+    "company_size": "string",
+    "_batch_id": "int32",
+    "_extracted_at": "datetime64[ns]",
+    "_source_table": "string",
+    "_row_hash": "string",
+    "es_remoto_total": "bool",
+    "misma_ubicacion": "bool",
+    "pago_en_usd": "bool",
+    "tasa_cambio_a_usd": "float64",
+    "_outlier_salario": "bool",
+    "_transformed_at": "datetime64[us]",
+    "_transform_version": "object"
+  },
+  "actualizado_en": "2026-11-07T22:44:37"
+}

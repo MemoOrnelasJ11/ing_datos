@@ -1,11 +1,11 @@
 {
   "etiqueta": "saurabhbadole",
-  "actualizado_en": "2026-11-07T19:07:10",
+  "actualizado_en": "2026-11-07T22:43:11",
   "base_datos": "tabla_3.db",
   "tabla_origen": "data",
   "tabla_destino": "extracted_saurabhbadole",
   "ultimo_batch": 1,
-  "ultima_extraccion": "2026-11-07T19:07:10",
+  "ultima_extraccion": "2026-11-07T22:43:11",
   "filas_leidas": 93597,
   "filas_nuevas": 0,
   "filas_acumuladas": 93597,

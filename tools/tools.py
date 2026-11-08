@@ -363,3 +363,75 @@ class logs:
         registro = {"timestamp": datetime.now().isoformat(timespec="seconds"), **evento}
         with open(ruta, "a", encoding="utf-8") as f:
             f.write(json.dumps(registro, ensure_ascii=False, default=str) + "\n")
+
+
+class transformacion:
+    """Funciones genéricas de la capa TRANSFORMED (bitácora, limpieza, calidad y validación).
+    Las REGLAS de cada dataset se definen en el notebook; aquí solo vive la mecánica reutilizable."""
+
+    @staticmethod
+    def registrar(bitacora, paso, filas_antes, filas_despues, filas_afectadas, decision, justificacion, columnas=None):
+        """Agrega un paso a la bitácora con filas antes, después, afectadas y eliminadas."""
+        bitacora.append({
+            "paso": len(bitacora) + 1,
+            "transformacion": paso,
+            "columnas": ", ".join(columnas) if columnas else "",
+            "filas_antes": int(filas_antes),
+            "filas_despues": int(filas_despues),
+            "filas_eliminadas": int(filas_antes - filas_despues),
+            "filas_afectadas": int(filas_afectadas),
+            "decision": decision,
+            "justificacion": justificacion,
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+        })
+
+    @staticmethod
+    def limpiar_texto(df, columnas, mayusculas=()):
+        """strip + colapsa espacios dobles; pasa a MAYÚSCULAS las columnas de códigos.
+        Regresa (df, filas_afectadas)."""
+        df = df.copy()
+        cambio = pd.Series(False, index=df.index)
+        for c in columnas:
+            original = df[c]
+            limpio = original.astype("string").str.strip().str.replace(r"\s+", " ", regex=True)
+            if c in mayusculas:
+                limpio = limpio.str.upper()
+            cambio |= (limpio.fillna("<NA>") != original.astype("string").fillna("<NA>"))
+            df[c] = limpio
+        return df, int(cambio.sum())
+
+    @staticmethod
+    def medir_calidad(df, columnas, obligatorias, reglas):
+        """Mide completitud, unicidad y consistencia/validez. Regresa un dict plano {(dimension, metrica): valor}."""
+        m = {}
+        m[("General", "filas")] = len(df)
+        for c in columnas:
+            m[("Completitud", f"nulos_{c}")] = int(df[c].isna().sum())
+        m[("Completitud", "nulos_totales")] = int(df[columnas].isna().sum().sum())
+        m[("Completitud", "filas_con_nulo_en_obligatorias")] = int(df[obligatorias].isna().any(axis=1).sum())
+        m[("Unicidad", "duplicados_exactos")] = int(df.duplicated(subset=columnas).sum())
+        for nombre, regla in reglas.items():
+            m[("Consistencia", nombre)] = int(regla(df).fillna(False).sum())
+        return m
+
+    @staticmethod
+    def tabla_calidad(antes, despues):
+        """Arma la tabla antes vs. después a partir de dos salidas de medir_calidad."""
+        filas = []
+        for (dim, met), v_antes in antes.items():
+            v_desp = despues.get((dim, met))
+            filas.append({"dimension": dim, "metrica": met, "antes": v_antes, "despues": v_desp,
+                          "diferencia": None if v_desp is None else v_desp - v_antes})
+        return pd.DataFrame(filas)
+
+    @staticmethod
+    def validar_duckdb(ruta_parquet, obligatorias):
+        """DESCRIBE del Parquet + conteo de filas y nulos en columnas obligatorias, con DuckDB."""
+        import duckdb  # pip install duckdb
+        ruta = str(ruta_parquet)
+        con = duckdb.connect()
+        esquema = con.execute(f"DESCRIBE SELECT * FROM read_parquet('{ruta}')").df()
+        nulos = ", ".join(f'SUM(CASE WHEN "{c}" IS NULL THEN 1 ELSE 0 END) AS nulos_{c}' for c in obligatorias)
+        conteo = con.execute(f"SELECT COUNT(*) AS filas, {nulos} FROM read_parquet('{ruta}')").df()
+        con.close()
+        return esquema, conteo
