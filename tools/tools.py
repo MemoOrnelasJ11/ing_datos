@@ -18,6 +18,8 @@ from googleapiclient.http import MediaFileUpload
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from mimetypes import guess_type
+import json
+from datetime import datetime
 #pip install google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
 
 #Base folder path
@@ -32,11 +34,32 @@ os.environ["KAGGLE_CONFIG_DIR"] = os.path.dirname(KAGGLE_JSON_PATH)
 #ruta de base de datos sqlite3
 RUTA_CARPETA_BASE_SQL= BASE_DIR / "bases"
 
+#ruta de extraccion y transformacion
+RUTA_EXTRACCION_LOGS  = BASE_DIR / "Extraccion_de_Datos" / "Logs"
+RUTA_TRANSF_PROCESSED = BASE_DIR / "Transformacion_de_Datos" / "Processed"
+RUTA_TRANSF_LOGS      = BASE_DIR / "Transformacion_de_Datos" / "Logs"
+RUTA_TRANSF_REPORTES  = BASE_DIR / "Transformacion_de_Datos" / "Reportes"
+
+LOG_EXTRACCION = RUTA_EXTRACCION_LOGS / "extraccion_log.jsonl"
+LOG_TRANSF = RUTA_TRANSF_LOGS / "transformacion_log.jsonl"
+
+DATASETS = {
+    "adilshamim8"      : {"db": RUTA_CARPETA_BASE_SQL / "tabla_1.db", "raw": "data"},
+    "samithsachidanandan"  : {"db": RUTA_CARPETA_BASE_SQL / "tabla_2.db", "raw": "data"},
+    "saurabhbadole"     : {"db": RUTA_CARPETA_BASE_SQL / "tabla_3.db", "raw": "data"},
+}
+
+ETIQUETAS = list(DATASETS.keys())
+
 #Id de carpetas en Drive
 DRIVE_IDS = {
 "MASTER_DRIVE_FOLDER_ID" : "1wjvk7lnyanYCKSsIGLgaltP-Sn7r0Ri_",
 "KAGGLE_DRIVE_FOLDER_ID" : "1mvSPBrSxSdz0wff0DRgmHj-smOPYchg_",
-"DB_DRIVE_FOLDER_ID" : "1G3x289C1O8Lt-0aRm8KQUnXNl37_aVd7"
+"DB_DRIVE_FOLDER_ID" : "1G3x289C1O8Lt-0aRm8KQUnXNl37_aVd7", 
+"EXTRACCION_LOGS_ID":  "1t6DEBNjjOtVoVvw2CSzNHg3AVL0gvAXh",
+"TRANSF_PROCESSED_ID": "1xe5T4tOB3oHyt8Cz_1dtYWCuF8qmmd5k",
+"TRANSF_LOGS_ID":      "1YFTogvNdjPP2-vFpdaklLrpRGBCcDYZQ",
+"TRANSF_REPORTES_ID":  "1FnBt_IdYpPzjMs4u19nDrRI9setpmKPL"
 }
 
 
@@ -218,9 +241,7 @@ class sql:
         conexion.close()
         return df
 
-
-class kaggle:
-            
+class kaggle:            
     @staticmethod
     #Busca datasets en Kaggle por texto e imprime la lista de resultados
     def consultar_bases_datos(busqueda: str) -> list:
@@ -314,3 +335,31 @@ class kaggle:
             votos  = getattr(ds, 'voteCount', 'N/D')
             print(f'{i+1}. {ds.ref}')
             print(f'   {ds.title}  |  {tamano}  |  votos: {votos}')
+
+class logs:            
+    @staticmethod
+    def crear_cdc(ruta, etiqueta = None, reemplazar = False, **estado):
+        ruta = Path(ruta).expanduser()
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        actual={}
+
+        if ruta.exists() and not reemplazar:
+            with open(ruta, encoding="utf-8") as f:
+                actual = json.load(f)
+
+        if estado or reemplazar or not ruta.exists():
+            if etiqueta:
+                actual["etiqueta"] = etiqueta
+            actual.update(estado)
+            actual["actualizado_en"] = datetime.now().isoformat(timespec="seconds")
+            with open(ruta, "w", encoding="utf-8") as f:
+                json.dump(actual, f, indent=2, ensure_ascii=False, default=str)
+        return actual
+
+    @staticmethod
+    def escribir_log(ruta, **evento):
+        ruta = Path(ruta).expanduser()
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        registro = {"timestamp": datetime.now().isoformat(timespec="seconds"), **evento}
+        with open(ruta, "a", encoding="utf-8") as f:
+            f.write(json.dumps(registro, ensure_ascii=False, default=str) + "\n")
