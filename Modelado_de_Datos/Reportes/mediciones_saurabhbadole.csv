@@ -1,0 +1,4 @@
+dataset,destino,estrategia,filas,carga_seg,disco_mb,consulta_seg,multiplicar
+saurabhbadole,Parquet,Data lake / lakehouse,932740,0.32,2.9,0.007,20
+saurabhbadole,DuckDB,Data warehouse,932740,0.59,14.0,0.001,20
+saurabhbadole,serving.db,Esquema estrella (datos reales),46637,,,0.002,1

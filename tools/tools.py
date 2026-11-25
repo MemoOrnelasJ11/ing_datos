@@ -43,6 +43,12 @@ RUTA_TRANSF_REPORTES  = BASE_DIR / "Transformacion_de_Datos" / "Reportes"
 LOG_EXTRACCION = RUTA_EXTRACCION_LOGS / "extraccion_log.jsonl"
 LOG_TRANSF = RUTA_TRANSF_LOGS / "transformacion_log.jsonl"
 
+#ruta de modelado (capa SERVING, Actividad 3)
+RUTA_MODELADO          = BASE_DIR / "Modelado_de_Datos"
+RUTA_MODELADO_REPORTES = RUTA_MODELADO / "Reportes"
+RUTA_MODELADO_PRUEBAS  = RUTA_MODELADO / "Pruebas"
+SERVING_DB             = RUTA_MODELADO / "serving.db"
+
 DATASETS = {
     "adilshamim8"      : {"db": RUTA_CARPETA_BASE_SQL / "tabla_1.db", "raw": "data"},
     "samithsachidanandan"  : {"db": RUTA_CARPETA_BASE_SQL / "tabla_2.db", "raw": "data"},
@@ -435,3 +441,111 @@ class transformacion:
         conteo = con.execute(f"SELECT COUNT(*) AS filas, {nulos} FROM read_parquet('{ruta}')").df()
         con.close()
         return esquema, conteo
+
+
+class modelado:
+    """Funciones genéricas de la capa SERVING (esquema estrella en serving.db con DuckDB).
+    El diseño de cada estrella (CREATE TABLE / INSERT) vive en scripts/modelado.ipynb; aquí solo la mecánica reutilizable."""
+
+    @staticmethod
+    def parquet(etiqueta):
+        """Ruta del Parquet TRANSFORMED de un dataset."""
+        return RUTA_TRANSF_PROCESSED / f"transformed_{etiqueta}.parquet"
+
+    @staticmethod
+    def crear_vista(con, etiqueta):
+        """Crea la vista temporal base_<etiqueta> sobre el Parquet (guarda la consulta, no los datos).
+        Es TEMP para que serving.db no guarde una ruta de archivo que solo existe en una computadora."""
+        con.execute(f"CREATE OR REPLACE TEMP VIEW base_{etiqueta} AS "
+                    f"SELECT * FROM read_parquet('{modelado.parquet(etiqueta)}')")
+        return f"base_{etiqueta}"
+
+    @staticmethod
+    def repeticiones(con, tabla, columnas):
+        """Filas totales y valores distintos de cada columna: qué se repite y puede ser dimensión."""
+        partes = ", ".join(f'COUNT(DISTINCT "{c}") AS "{c}"' for c in columnas)
+        df = con.sql(f"SELECT COUNT(*) AS filas, {partes} FROM {tabla}").df().T.reset_index()
+        df.columns = ["columna", "valores_distintos"]
+        total = int(df.loc[df["columna"] == "filas", "valores_distintos"].iloc[0])
+        df["pct_de_filas"] = (df["valores_distintos"] / total * 100).round(2)
+        df["veces_que_se_repite_en_promedio"] = (total / df["valores_distintos"]).round(1)
+        return df
+
+    @staticmethod
+    def borrar_tablas(con, tablas):
+        """Borra las tablas en el orden dado (primero los hechos, porque apuntan a las dimensiones)."""
+        for t in tablas:
+            con.execute(f"DROP TABLE IF EXISTS {t}")
+
+    @staticmethod
+    def esquema_tabla(con, tabla):
+        """Columnas, tipos y llave primaria de una tabla del modelo."""
+        cols = con.sql(f"DESCRIBE {tabla}").df()[["column_name", "column_type", "null", "key"]]
+        cols.insert(0, "tabla", tabla)
+        return cols
+
+    @staticmethod
+    def validar(con, tabla_plana, tabla_hechos, medida_plana, medida_hechos):
+        """Filas y suma de la medida principal: tabla plana contra tabla de hechos."""
+        df = con.sql(f"""
+            SELECT (SELECT COUNT(*) FROM {tabla_plana})                 AS filas_tabla_plana,
+                   (SELECT COUNT(*) FROM {tabla_hechos})                AS filas_hechos,
+                   (SELECT SUM({medida_plana})::BIGINT  FROM {tabla_plana})  AS suma_tabla_plana,
+                   (SELECT SUM({medida_hechos})::BIGINT FROM {tabla_hechos}) AS suma_hechos
+        """).df()
+        df["cuadra"] = (df["filas_tabla_plana"] == df["filas_hechos"]) & (df["suma_tabla_plana"] == df["suma_hechos"])
+        return df
+
+    @staticmethod
+    def huerfanas(con, tabla_hechos, relaciones):
+        """Cuenta filas de hechos sin pareja en alguna dimensión (debe ser 0).
+        relaciones: lista de (columna_fk, tabla_dim, columna_pk)."""
+        joins, condiciones = [], []
+        for i, (fk, dim, pk) in enumerate(relaciones):
+            joins.append(f"LEFT JOIN {dim} AS d{i} ON d{i}.{pk} = f.{fk}")
+            condiciones.append(f"d{i}.{pk} IS NULL")
+        return con.sql(f"SELECT COUNT(*) AS filas_huerfanas FROM {tabla_hechos} AS f "
+                       f"{' '.join(joins)} WHERE {' OR '.join(condiciones)}").df()
+
+    @staticmethod
+    def ver_serving(ruta=None):
+        """Muestra las tablas y vistas de serving.db con sus filas y columnas."""
+        import duckdb  # pip install duckdb
+        ruta = Path(ruta or SERVING_DB)
+        if not ruta.exists():
+            print(f"  No existe todavía: {ruta.name}")
+            return
+        con = duckdb.connect(str(ruta), read_only=True)
+        objetos = con.sql("""
+            SELECT table_name AS nombre, 'tabla' AS tipo FROM duckdb_tables()
+            UNION ALL
+            SELECT view_name, 'vista' FROM duckdb_views() WHERE NOT internal
+            ORDER BY tipo, nombre""").fetchall()
+        print(f"\n  DuckDB: {ruta.name}\n")
+        print(f'  {"NOMBRE":<36} {"TIPO":<6} {"FILAS":>10} {"COLS":>5}')
+        print(f'  {"-"*36} {"-"*6} {"-"*10} {"-"*5}')
+        for nombre, tipo in objetos:
+            try:
+                filas = con.sql(f'SELECT COUNT(*) FROM "{nombre}"').fetchall()[0][0]
+                cols = len(con.sql(f'SELECT * FROM "{nombre}" LIMIT 0').columns)
+                print(f"  {nombre:<36} {tipo:<6} {filas:>10,} {cols:>5}")
+            except Exception:
+                print(f"  {nombre:<36} {tipo:<6} {'(no disponible)':>16}")
+        con.close()
+
+
+class almacenamiento:
+    """Prueba técnica de carga, disco y consulta (Parquet = data lake / DuckDB = data warehouse)."""
+
+    @staticmethod
+    def cronometrar(funcion):
+        """Ejecuta funcion() y regresa (resultado, segundos)."""
+        inicio = time.perf_counter()
+        resultado = funcion()
+        return resultado, time.perf_counter() - inicio
+
+    @staticmethod
+    def mb(ruta):
+        """Tamaño de un archivo en MB."""
+        return os.path.getsize(ruta) / 1024 / 1024
+

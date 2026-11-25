@@ -1,0 +1,4 @@
+dataset,destino,estrategia,filas,carga_seg,disco_mb,consulta_seg,multiplicar
+adilshamim8,Parquet,Data lake / lakehouse,1438260,0.54,4.8,0.016,20
+adilshamim8,DuckDB,Data warehouse,1438260,0.92,21.3,0.002,20
+adilshamim8,serving.db,Esquema estrella (datos reales),71913,,,0.003,1

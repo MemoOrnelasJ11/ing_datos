@@ -1,0 +1,4 @@
+dataset,destino,estrategia,filas,carga_seg,disco_mb,consulta_seg,multiplicar
+samithsachidanandan,Parquet,Data lake / lakehouse,884880,0.3,2.5,0.006,20
+samithsachidanandan,DuckDB,Data warehouse,884880,0.56,13.5,0.001,20
+samithsachidanandan,serving.db,Esquema estrella (datos reales),44244,,,0.002,1
